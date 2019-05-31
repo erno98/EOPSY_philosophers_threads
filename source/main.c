@@ -4,6 +4,8 @@
 #include <unistd.h>
 
 #define RUNTIME 30
+#define THINK 2
+#define EAT 1
 
 #define N 5
 #define LEFT (i+N-1)%N
@@ -46,7 +48,7 @@ int main(int argc, char** argv)
 	}
 
 	sleep(RUNTIME);
-	printf("Finishing threads and showing results");
+	printf("Finishing threads and showing results\n");
 	for(int i=0; i<N; i++)
 	{
 		pthread_cancel(philo[i]);
@@ -68,7 +70,46 @@ int main(int argc, char** argv)
 void* philosopher(void* num)
 {
 	int* i = (int*) num;
-	printf("%d\n", *i);
-
+	printf("Philosopher %d has joined the table.\n", *i);
+	while(1)
+	{
+		printf("Philosopher %d is thinking...\n", *i);
+		sleep(THINK);
+		grab_forks(*i);
+		printf("Philosopher %d is eating...\n", *i);
+		sleep(EAT);
+		put_away_forks(*i);
+	}
 	return NULL;
+}
+
+void grab_forks(int i)
+{
+	pthread_mutex_lock(&m);
+		state[i] = HUNGRY;
+		printf("Philosopher %d is hungry and trying to take forks.\n", i);
+		test(i);
+	pthread_mutex_unlock(&m);
+
+	pthread_mutex_lock(&s[i]);
+}
+
+void put_away_forks(int i)
+{
+	pthread_mutex_lock(&m);
+		++meals[i];
+		state[i] = THINKING;
+		printf("Philosopher %d has finished eating and put away his forks.\n", i);
+		test(LEFT);
+		test(RIGHT);
+	pthread_mutex_unlock(&m);
+}
+
+void test(int i)
+{
+	if(state[i] == HUNGRY && state[LEFT] != EATING && state[RIGHT] != EATING)
+	{
+		state[i] = EATING;
+		pthread_mutex_unlock(&s[i]);
+	}
 }
